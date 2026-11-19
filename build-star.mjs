@@ -105,7 +105,7 @@ const SVG_W = Math.round(W * CW + PAD * 2 + 20);
 const gridTop = 18;
 const QUOTE = ['Look at the sky tonight' ,
 'All of the stars have a reason' ,
-' A reason to shine, a reason like mine''— star shopping, lil peep'];   // optional shining lines under the star
+' A reason to shine, a reason like mine'— star shopping, lil peep'];   // optional shining lines under the star
 const QTOP = gridTop + H * LH + 30, QGAP = 28;
 const SVG_H = QUOTE.length ? QTOP + (QUOTE.length - 1) * QGAP + 34 : gridTop + H * LH + 18;
 const CX = SVG_W / 2;

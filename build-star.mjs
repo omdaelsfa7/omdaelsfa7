@@ -3,7 +3,7 @@
 import { writeFileSync } from 'node:fs';
 
 const W = 226, H = 80;           // character grid (fine 6px cells = more detail)
-const N = 120, PERIOD = 10;      // frames, seconds per full turn
+const N = 60, PERIOD = 5;        // frames, seconds per HALF turn (the star looks identical after 180°, so half a turn loops seamlessly)
 const FS = 6, CW = 3.62, LH = 6.8; // font size and approx monospace cell size
 const RAMP = " .'`,:;-~=+*il1t7I3456290$%#&@";
 
@@ -39,7 +39,7 @@ const LIGHT = norm([-0.55, -0.6, 0.85]), VIEW = [0, 0, 1];
 const CAM = 3.4, SY = 36, SX = SY * (LH / CW);
 
 function renderFrame(i) {
-  const t = (i / N) * Math.PI * 2;
+  const t = (i / N) * Math.PI;      // 0..180°
   const rot = p => rotate(p, t, 0, 0);   // spin on the vertical axis only, horizontal arms stay level
   const zbuf = Array.from({ length: H }, () => new Float64Array(W).fill(-Infinity));
   const out = Array.from({ length: H }, () => Array(W).fill(' '));
@@ -127,13 +127,13 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
 // mini copy of the main star outline (same R / DIAG / r), unit size, centred on 0,0
 const miniStar = 'M' + rim.map(([px, py]) => `${px.toFixed(3)} ${py.toFixed(3)}`).join('L') + 'Z';
 const gx = x => (CX - (W * CW) / 2 + (x + 0.5) * CW).toFixed(1);
-const gy = y => (gridTop + y * LH).toFixed(1);
+const gy = y => +(gridTop + y * LH).toFixed(1);   // + drops a trailing .0 to save bytes
 
 const frameStep = PERIOD / N;
 const frameSvg = frames.map((f, i) => {
   let c0 = W, c1 = -1;
   for (const l of f) { const a = l.search(/[^ ]/); if (a >= 0) { c0 = Math.min(c0, a); c1 = Math.max(c1, l.trimEnd().length - 1); } }
-  const bx = (CX + ((c0 + c1 + 1) / 2 - W / 2) * CW).toFixed(1);
+  const bx = +(CX + ((c0 + c1 + 1) / 2 - W / 2) * CW).toFixed(1);
   const lines = f.map((l, y) => l.trim() ? `<tspan x="${bx}" y="${gy(y)}">${esc(l.slice(c0, c1 + 1))}</tspan>` : '').join('');
   console.assert(c1 >= c0, `frame ${i} trimmed to nothing`);
   return `<g class="f" style="animation-delay:${(-((N - i) % N) * frameStep).toFixed(3)}s">` +
@@ -167,7 +167,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${
   @keyframes tw { 0%,100% { opacity: .2; transform: scale(.45) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(12deg); } }
   .q { fill: url(#shine); font-size: 17px; letter-spacing: .5px; text-anchor: middle; animation: qin 1.2s ease-out both; }
   @keyframes qin { from { opacity: 0; } to { opacity: 1; } }
-  .halo { animation: pulse ${PERIOD / 2}s ease-in-out infinite; transform-origin: ${CX}px ${gridTop + (H * LH) / 2}px; }
+  .halo { animation: pulse 5s ease-in-out infinite; transform-origin: ${CX}px ${gridTop + (H * LH) / 2}px; }
   @keyframes pulse { 0%,100% { opacity: .7; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
   @media (prefers-reduced-motion: reduce) { .f, .tw, .halo, .q { animation: none; } .f:first-of-type { visibility: visible; } }
 </style>

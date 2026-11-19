@@ -111,8 +111,8 @@ const QUOTE = ['Look at the sky tonight' ,
 ,'— star shopping, lil peep']; 
 
 // optional shining lines under the star
-const QTOP = gridTop + H * LH + 30, QGAP = 28;
-const SVG_H = QUOTE.length ? QTOP + (QUOTE.length - 1) * QGAP + 34 : gridTop + H * LH + 18;
+const QFS = 11, QCW = 6.6, QX = PAD, QTOP = 30, QGAP = 17, TYPE = 0.045;   // small typed quote, top-left; TYPE = seconds per char
+const SVG_H = gridTop + H * LH + 18;
 const CX = SVG_W / 2;
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -123,7 +123,7 @@ let seed = 7;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const stars = [];
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
-  if (!used[y][x] && rnd() < 0.011) stars.push({ x, y, size: (1.8 + rnd() * rnd() * 5).toFixed(1), d: (rnd() * 3).toFixed(2), dur: (2.2 + rnd() * 2).toFixed(1) });
+  if (!used[y][x] && !(CX - (W * CW) / 2 + (x + 0.5) * CW < QX + Math.max(0, ...QUOTE.map(q => q.length)) * QCW + 24 && gridTop + y * LH < QTOP + QUOTE.length * QGAP + 6) && rnd() < 0.011) stars.push({ x, y, size: (1.8 + rnd() * rnd() * 5).toFixed(1), d: (rnd() * 3).toFixed(2), dur: (2.2 + rnd() * 2).toFixed(1) });
 // mini copy of the main star outline (same R / DIAG / r), unit size, centred on 0,0
 const miniStar = 'M' + rim.map(([px, py]) => `${px.toFixed(3)} ${py.toFixed(3)}`).join('L') + 'Z';
 const gx = x => (CX - (W * CW) / 2 + (x + 0.5) * CW).toFixed(1);
@@ -139,6 +139,20 @@ const frameSvg = frames.map((f, i) => {
   return `<g class="f" style="animation-delay:${(-((N - i) % N) * frameStep).toFixed(3)}s">` +
     `<text class="star">${lines}</text></g>`;
 }).join('\n');
+
+// typed quote: each line is revealed one char at a time by an animated clip, with a block cursor; lines type one after another
+let qt = 0.6;
+const quoteSvg = QUOTE.map((q, k) => {
+  const y = QTOP + k * QGAP, n = q.length, d = Math.max(0.2, n * TYPE), st = qt.toFixed(2), en = (qt + d).toFixed(2);
+  qt += d + 0.25;
+  const steps = Array.from({ length: n + 1 }, (_, j) => +(j * QCW).toFixed(1));
+  const last = k === QUOTE.length - 1;
+  return `<clipPath id="qc${k}"><rect x="${QX}" y="${y - QFS}" width="0" height="${QFS + 4}"><animate attributeName="width" values="${steps.join(';')};${steps[n] + 8}" begin="${st}s" dur="${d.toFixed(2)}s" calcMode="discrete" fill="freeze"/></rect></clipPath>` +
+    `<text class="q${last ? ' dim' : ''}" x="${QX}" y="${y}" clip-path="url(#qc${k})">${esc(q)}</text>` +
+    `<rect x="${QX}" y="${y - QFS + 1}" width="${QCW}" height="${QFS + 1}" fill="#c9d1d9" opacity="0"><set attributeName="opacity" to=".85" begin="${st}s"/>` +
+    `<animate attributeName="x" values="${steps.map(v => +(QX + v).toFixed(1)).join(';')}" begin="${st}s" dur="${d.toFixed(2)}s" calcMode="discrete" fill="freeze"/>` +
+    (last ? `<animate attributeName="opacity" values=".85;0" begin="${en}s" dur="1s" calcMode="discrete" repeatCount="indefinite"/>` : `<set attributeName="opacity" to="0" begin="${en}s"/>`) + '</rect>';
+}).join('');
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="A 3D star made of numbers and characters spinning">
 <title>Spinning ASCII star</title>
@@ -165,8 +179,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${
   @keyframes show { 0% { visibility: visible; } ${(100 / N).toFixed(4)}% { visibility: hidden; } }
   .tw { fill: #e6ebf0; animation: tw 3s ease-in-out infinite; }
   @keyframes tw { 0%,100% { opacity: .2; transform: scale(.45) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(12deg); } }
-  .q { fill: url(#shine); font-size: 17px; letter-spacing: .5px; text-anchor: middle; animation: qin 1.2s ease-out both; }
-  @keyframes qin { from { opacity: 0; } to { opacity: 1; } }
+  .q { fill: #c9d1d9; font-size: ${QFS}px; }
+  .q.dim { fill: #8b949e; }
   .halo { animation: pulse 5s ease-in-out infinite; transform-origin: ${CX}px ${gridTop + (H * LH) / 2}px; }
   @keyframes pulse { 0%,100% { opacity: .7; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
   @media (prefers-reduced-motion: reduce) { .f, .tw, .halo, .q { animation: none; } .f:first-of-type { visibility: visible; } }
@@ -177,7 +191,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${
 <g filter="url(#glow)">
 ${frameSvg}
 </g>
-<g filter="url(#glow)">${QUOTE.map((q, k) => `<text class="q" x="${CX}" y="${QTOP + k * QGAP}" style="animation-delay:${(0.3 + k * 0.5).toFixed(1)}s">${esc(q)}</text>`).join('')}</g>
+<g>${quoteSvg}</g>
 </svg>
 `;
 
